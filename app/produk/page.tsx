@@ -2,28 +2,35 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { supabase } from "@/lib/supabase"; // Import Supabase
+import { supabase } from "@/lib/supabase";
 
 export default function ProductPage() {
   const [lang, setLang] = useState<"id" | "en">("id");
-  const [products, setProducts] = useState<any[]>([]); // State untuk menyimpan data DB
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adminWa, setAdminWa] = useState("6281234567890"); // Default sementara
 
   // Fetch Data dari Supabase saat halaman dibuka
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from("products").select("*").order("id", { ascending: true });
 
-      if (data) setProducts(data);
+      // 1. Ambil Produk
+      const { data: prodData } = await supabase.from("products").select("*").order("id", { ascending: true });
+
+      if (prodData) setProducts(prodData);
+
+      // 2. Ambil Nomor WA Admin
+      const { data: waData } = await supabase.from("app_settings").select("value").eq("key", "admin_wa").single();
+
+      if (waData) setAdminWa(waData.value);
+
       setLoading(false);
     };
 
-    fetchProducts();
+    fetchData();
   }, []);
 
-  // Fungsi helper untuk menentukan icon jika tidak ada gambar
   const getIcon = (title: string) => {
     const lower = title.toLowerCase();
     if (lower.includes("jerami") || lower.includes("straw")) return "🌾";
@@ -32,7 +39,6 @@ export default function ProductPage() {
     return "📦";
   };
 
-  // Kamus Bahasa Statis (Header & Label)
   const t = {
     id: {
       title: "Katalog Produk Ekspor",
@@ -100,17 +106,16 @@ export default function ProductPage() {
                     <div className="grid grid-cols-2 gap-y-2">
                       <span className="text-gray-500">{t.moisture}:</span>
                       <span className="font-medium text-right">{product.moisture}</span>
-
                       <span className="text-gray-500">{t.pack}:</span>
                       <span className="font-medium text-right">{lang === "id" ? product.packaging_id : product.packaging_en}</span>
-
                       <span className="text-gray-500">{t.origin}:</span>
                       <span className="font-medium text-right">{product.origin}</span>
                     </div>
                   </div>
 
                   <Link
-                    href={`https://wa.me/6281234567890?text=Hello, I am interested in your ${product.title_en}...`}
+                    // DISINI KITA GUNAKAN NOMOR ADMIN DARI DATABASE (adminWa)
+                    href={`https://wa.me/${adminWa}?text=Hello, I am interested in your ${product.title_en}...`}
                     target="_blank"
                     className="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded text-center transition flex items-center justify-center gap-2">
                     <span>💬</span> {t.btnContact}
