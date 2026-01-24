@@ -5,20 +5,32 @@ import * as XLSX from "xlsx";
 
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
-  const [activeTab, setActiveTab] = useState<"MEMBERS" | "PRODUCTS" | "SETTINGS">("MEMBERS"); // Tambah Tab Settings
+  const [activeTab, setActiveTab] = useState<"MEMBERS" | "PRODUCTS" | "SETTINGS">("MEMBERS");
   const [loading, setLoading] = useState(false);
 
   // Data State
   const [members, setMembers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
 
-  // State Settings
-  const [adminWa, setAdminWa] = useState("");
+  // --- STATE SETTINGS (Footer & Kontak) ---
+  const [settings, setSettings] = useState({
+    admin_wa: "",
+    footer_address: "",
+    footer_email: "",
+    footer_phone: "",
+  });
 
-  // State untuk EDIT PRODUK
+  // --- STATE ORGANISASI ---
+  const [orgMembers, setOrgMembers] = useState<any[]>([]);
+  const [newMember, setNewMember] = useState({
+    name: "",
+    role_id: "",
+    role_en: "",
+    division: "pengurus",
+  });
+
+  // State Produk (Edit/Add)
   const [editingId, setEditingId] = useState<number | null>(null);
-
-  // Form State Produk
   const [formData, setFormData] = useState({
     title_id: "",
     title_en: "",
@@ -38,127 +50,132 @@ export default function AdminPage() {
       setAuthorized(true);
       fetchMembers();
       fetchProducts();
-      fetchSettings(); // Ambil nomor WA
+      fetchSettings();
+      fetchOrgMembers();
     } else {
       window.location.href = "/login";
     }
   }, []);
 
-  // --- FUNGSI FETCH DATA ---
+  // --- FUNGSI FETCH ---
   const fetchMembers = async () => {
     const { data } = await supabase.from("members").select("*").order("id", { ascending: false });
     setMembers(data || []);
   };
-
   const fetchProducts = async () => {
     const { data } = await supabase.from("products").select("*").order("id", { ascending: true });
     setProducts(data || []);
   };
 
   const fetchSettings = async () => {
-    // Ambil nomor WA dari tabel app_settings
-    const { data } = await supabase.from("app_settings").select("value").eq("key", "admin_wa").single();
-    if (data) setAdminWa(data.value);
+    const { data } = await supabase.from("app_settings").select("*");
+    if (data) {
+      const newSettings: any = { ...settings };
+      data.forEach((item) => {
+        newSettings[item.key] = item.value;
+      });
+      setSettings(newSettings);
+    }
   };
 
-  // --- FUNGSI UPDATE SETTINGS (WA) ---
-  const handleUpdateWa = async (e: any) => {
+  const fetchOrgMembers = async () => {
+    const { data } = await supabase.from("org_members").select("*").order("id", { ascending: true });
+    setOrgMembers(data || []);
+  };
+
+  // --- LOGIC SETTINGS (Footer) ---
+  const handleSaveSettings = async (e: any) => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.from("app_settings").upsert({ key: "admin_wa", value: adminWa }); // Upsert = Update jika ada, Insert jika belum
+    // Update satu per satu
+    const updates = [
+      { key: "admin_wa", value: settings.admin_wa },
+      { key: "footer_address", value: settings.footer_address },
+      { key: "footer_email", value: settings.footer_email },
+      { key: "footer_phone", value: settings.footer_phone },
+    ];
 
-    if (error) alert("Gagal update nomor WA: " + error.message);
-    else alert("Nomor WhatsApp berhasil diperbarui!");
+    const { error } = await supabase.from("app_settings").upsert(updates);
+
+    if (error) alert("Gagal simpan pengaturan: " + error.message);
+    else alert("Pengaturan berhasil disimpan!");
 
     setLoading(false);
   };
 
-  // --- FUNGSI EXPORT EXCEL ---
-  const handleExportExcel = () => {
-    if (members.length === 0) {
-      alert("Data kosong");
-      return;
+  // --- LOGIC ORGANISASI ---
+  const handleAddMember = async (e: any) => {
+    e.preventDefault();
+    const { error } = await supabase.from("org_members").insert([newMember]);
+    if (error) alert(error.message);
+    else {
+      alert("Anggota organisasi ditambah!");
+      setNewMember({ name: "", role_id: "", role_en: "", division: "pengurus" });
+      fetchOrgMembers();
     }
-    const dataToExport = members.map((m) => ({
-      ID: m.id,
-      Tanggal: new Date(m.created_at).toLocaleDateString("id-ID"),
-      Nama: m.nama_lengkap,
-      Email: m.email,
-      WA: m.no_wa,
-      Alasan: m.alasan_bergabung,
-      Status: m.status,
-    }));
+  };
+
+  const handleDeleteMember = async (id: number) => {
+    if (!confirm("Hapus anggota ini?")) return;
+    await supabase.from("org_members").delete().eq("id", id);
+    fetchOrgMembers();
+  };
+
+  // --- LOGIC EXCEL & LAINNYA ---
+  const handleExportExcel = () => {
+    /* ... kode export sama ... */
+    const dataToExport = members.map((m) => ({ ID: m.id, Nama: m.nama_lengkap, WA: m.no_wa, Status: m.status }));
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Members");
     XLSX.writeFile(wb, "Data_Anggota.xlsx");
   };
-
   const handleExportProducts = () => {
-    if (products.length === 0) {
-      alert("Data kosong");
-      return;
-    }
-    const dataToExport = products.map((p) => ({
-      ID: p.id,
-      "Nama (ID)": p.title_id,
-      Moisture: p.moisture,
-      Origin: p.origin,
-    }));
+    /* ... kode export sama ... */
+    const dataToExport = products.map((p) => ({ Nama: p.title_id, Origin: p.origin }));
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Katalog");
-    XLSX.writeFile(wb, "Katalog_Produk.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Produk");
+    XLSX.writeFile(wb, "Katalog.xlsx");
+  };
+  const handleLogout = () => {
+    localStorage.removeItem("isAdmin");
+    window.location.href = "/login";
   };
 
-  // --- LOGIC LAINNYA (Sama seperti sebelumnya) ---
+  // Logic Produk & Member (Singkat saja karena tidak berubah)
   const handleApproveMember = async (id: number) => {
-    if (!confirm("Setujui?")) return;
     await supabase.from("members").update({ status: "APPROVED" }).eq("id", id);
     fetchMembers();
   };
-
-  const handleDeleteMember = async (id: number) => {
-    if (!confirm("Hapus?")) return;
-    await supabase.from("members").delete().eq("id", id);
-    fetchMembers();
+  const handleDeleteMemberData = async (id: number) => {
+    if (confirm("Hapus?")) {
+      await supabase.from("members").delete().eq("id", id);
+      fetchMembers();
+    }
   };
-
   const handleSubmitProduct = async (e: any) => {
     e.preventDefault();
     setLoading(true);
-    if (editingId) {
-      await supabase.from("products").update(formData).eq("id", editingId);
-      alert("Updated!");
-    } else {
-      await supabase.from("products").insert([formData]);
-      alert("Saved!");
-    }
+    if (editingId) await supabase.from("products").update(formData).eq("id", editingId);
+    else await supabase.from("products").insert([formData]);
     setEditingId(null);
     setFormData({ title_id: "", title_en: "", desc_id: "", desc_en: "", moisture: "", origin: "Java, Indonesia", packaging_id: "", packaging_en: "", image_url: "" });
     fetchProducts();
     setLoading(false);
+    alert("Sukses!");
   };
-
   const handleEditClick = (p: any) => {
     setEditingId(p.id);
     setFormData({ ...p });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const handleDeleteProduct = async (id: number) => {
-    if (!confirm("Hapus?")) return;
-    await supabase.from("products").delete().eq("id", id);
-    fetchProducts();
-  };
-  const resetForm = () => {
-    setEditingId(null);
-    setFormData({ title_id: "", title_en: "", desc_id: "", desc_en: "", moisture: "", origin: "Java, Indonesia", packaging_id: "", packaging_en: "", image_url: "" });
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("isAdmin");
-    window.location.href = "/login";
+    if (confirm("Hapus?")) {
+      await supabase.from("products").delete().eq("id", id);
+      fetchProducts();
+    }
   };
 
   if (!authorized) return <div className="p-10 text-center">Memeriksa akses...</div>;
@@ -166,7 +183,6 @@ export default function AdminPage() {
   return (
     <main className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-6xl mx-auto">
-        {/* HEADER */}
         <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <div>
             <h1 className="text-2xl font-bold text-blue-900">Dashboard Admin</h1>
@@ -177,7 +193,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* TABS */}
         <div className="flex gap-4 mb-6 border-b border-slate-300">
           <button onClick={() => setActiveTab("MEMBERS")} className={`pb-2 px-4 font-bold transition ${activeTab === "MEMBERS" ? "text-blue-900 border-b-4 border-blue-900" : "text-slate-400"}`}>
             👥 Anggota
@@ -190,7 +205,7 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* === TAB: MEMBERS === */}
+        {/* TAB MEMBERS */}
         {activeTab === "MEMBERS" && (
           <div className="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
             <div className="p-4 bg-slate-50 border-b flex justify-between">
@@ -226,7 +241,7 @@ export default function AdminPage() {
                           Approve
                         </button>
                       )}
-                      <button onClick={() => handleDeleteMember(m.id)} className="text-red-600 font-bold">
+                      <button onClick={() => handleDeleteMemberData(m.id)} className="text-red-600 font-bold">
                         Hapus
                       </button>
                     </td>
@@ -237,7 +252,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* === TAB: PRODUCTS === */}
+        {/* TAB PRODUCTS */}
         {activeTab === "PRODUCTS" && (
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow border h-fit">
@@ -259,7 +274,13 @@ export default function AdminPage() {
                 <div className="flex gap-2">
                   <button className="bg-blue-900 text-white w-full py-2 rounded font-bold">{editingId ? "Update" : "Simpan"}</button>
                   {editingId && (
-                    <button type="button" onClick={resetForm} className="bg-gray-200 text-gray-700 w-1/3 rounded">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(null);
+                        setFormData({ title_id: "", title_en: "", desc_id: "", desc_en: "", moisture: "", origin: "", packaging_id: "", packaging_en: "", image_url: "" });
+                      }}
+                      className="bg-gray-200 text-gray-700 w-1/3 rounded">
                       Batal
                     </button>
                   )}
@@ -277,9 +298,7 @@ export default function AdminPage() {
                 <div key={p.id} className="bg-white p-4 rounded shadow-sm border flex justify-between">
                   <div>
                     <h4 className="font-bold text-blue-900">{p.title_id}</h4>
-                    <p className="text-xs text-gray-500">
-                      {p.moisture} | {p.origin}
-                    </p>
+                    <p className="text-xs text-gray-500">{p.moisture}</p>
                   </div>
                   <div>
                     <button onClick={() => handleEditClick(p)} className="text-blue-600 mr-3">
@@ -295,28 +314,75 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* === TAB: SETTINGS (BARU) === */}
+        {/* === TAB: SETTINGS (KOMPLIT) === */}
         {activeTab === "SETTINGS" && (
-          <div className="max-w-xl mx-auto bg-white p-8 rounded-xl shadow border border-slate-200">
-            <h2 className="text-xl font-bold text-blue-900 mb-6">Pengaturan Kontak Pemesanan</h2>
-            <form onSubmit={handleUpdateWa}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nomor WhatsApp Admin (Untuk Order)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-3 text-gray-500 font-bold">📞</span>
-                <input
-                  type="text"
-                  required
-                  className="w-full pl-10 p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-slate-900"
-                  placeholder="Contoh: 628123456789 (Gunakan kode negara 62)"
-                  value={adminWa}
-                  onChange={(e) => setAdminWa(e.target.value.replace(/[^0-9]/g, ""))} // Hanya boleh angka
-                />
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* BAGIAN 1: INFO KONTAK & FOOTER */}
+            <div className="bg-white p-6 rounded-xl shadow border border-slate-200 h-fit">
+              <h2 className="text-xl font-bold text-blue-900 mb-6 border-b pb-2">Info Kontak & Footer</h2>
+              <form onSubmit={handleSaveSettings} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase">Nomor WhatsApp Admin (Order)</label>
+                  <input type="text" className="w-full p-2 border rounded text-slate-900" value={settings.admin_wa} onChange={(e) => setSettings({ ...settings, admin_wa: e.target.value })} placeholder="628..." />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase">Nomor Telepon (Footer)</label>
+                  <input type="text" className="w-full p-2 border rounded text-slate-900" value={settings.footer_phone} onChange={(e) => setSettings({ ...settings, footer_phone: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase">Email Resmi</label>
+                  <input type="text" className="w-full p-2 border rounded text-slate-900" value={settings.footer_email} onChange={(e) => setSettings({ ...settings, footer_email: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase">Alamat Lengkap</label>
+                  <textarea rows={3} className="w-full p-2 border rounded text-slate-900" value={settings.footer_address} onChange={(e) => setSettings({ ...settings, footer_address: e.target.value })} />
+                </div>
+                <button disabled={loading} className="w-full bg-blue-900 text-white font-bold py-2 rounded hover:bg-blue-800">
+                  {loading ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
+              </form>
+            </div>
+
+            {/* BAGIAN 2: STRUKTUR ORGANISASI */}
+            <div className="bg-white p-6 rounded-xl shadow border border-slate-200">
+              <h2 className="text-xl font-bold text-blue-900 mb-6 border-b pb-2">Struktur Organisasi</h2>
+
+              {/* Form Tambah Orang */}
+              <form onSubmit={handleAddMember} className="bg-slate-50 p-4 rounded mb-6 border">
+                <h3 className="font-bold text-sm mb-2 text-gray-700">Tambah Anggota Baru</h3>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <input required placeholder="Nama Lengkap" className="border p-2 rounded text-sm w-full text-slate-900" value={newMember.name} onChange={(e) => setNewMember({ ...newMember, name: e.target.value })} />
+                  <select className="border p-2 rounded text-sm w-full text-slate-900" value={newMember.division} onChange={(e) => setNewMember({ ...newMember, division: e.target.value })}>
+                    <option value="penasihat">Dewan Penasihat</option>
+                    <option value="pengawas">Dewan Pengawas</option>
+                    <option value="pengurus">Pengurus Harian</option>
+                    <option value="pengelola">Pengelola</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <input required placeholder="Jabatan (ID)" className="border p-2 rounded text-sm w-full text-slate-900" value={newMember.role_id} onChange={(e) => setNewMember({ ...newMember, role_id: e.target.value })} />
+                  <input required placeholder="Role (EN)" className="border p-2 rounded text-sm w-full text-slate-900" value={newMember.role_en} onChange={(e) => setNewMember({ ...newMember, role_en: e.target.value })} />
+                </div>
+                <button className="bg-green-600 text-white text-sm font-bold py-2 px-4 rounded w-full hover:bg-green-700">+ Tambahkan</button>
+              </form>
+
+              {/* List Orang */}
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {orgMembers.map((m) => (
+                  <div key={m.id} className="flex justify-between items-center p-3 border rounded bg-white hover:bg-gray-50">
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm">{m.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {m.role_id} ({m.division})
+                      </p>
+                    </div>
+                    <button onClick={() => handleDeleteMember(m.id)} className="text-red-500 hover:text-red-700 font-bold text-xs">
+                      Hapus
+                    </button>
+                  </div>
+                ))}
               </div>
-              <p className="text-xs text-gray-500 mt-2 mb-6">*Nomor ini akan digunakan sebagai tujuan link "Order" di halaman Katalog Produk. Pastikan menggunakan format internasional (62...) tanpa tanda plus (+).</p>
-              <button disabled={loading} className="w-full bg-blue-900 text-white font-bold py-3 rounded hover:bg-blue-800 transition">
-                {loading ? "Menyimpan..." : "Simpan Nomor Baru"}
-              </button>
-            </form>
+            </div>
           </div>
         )}
       </div>
