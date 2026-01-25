@@ -224,69 +224,75 @@ export default function Home() {
         </div>
       </section>
 
-      {/* === ORGANISASI (DATA DINAMIS) === */}
+      {/* === ORGANISASI (DATA DINAMIS - CENTERED) === */}
       <section className="py-20 px-6 bg-white border-t border-slate-200">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-blue-900 mb-4">{t.orgTitle}</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">{t.orgDesc}</p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Penasihat */}
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
-              <h3 className="font-bold text-xl text-blue-900 mb-4 border-b pb-2">{t.orgSections.penasihat}</h3>
-              <ul className="space-y-4">
-                {orgTeam.penasihat.length === 0 && <p className="text-xs text-gray-400 italic">Belum ada data</p>}
-                {orgTeam.penasihat.map((p, i) => (
-                  <li key={i}>
-                    <p className="font-bold text-gray-800">{p.name}</p>
-                    <p className="text-xs text-slate-500 font-medium">{lang === "id" ? p.role_id : p.role_en}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
 
-            {/* Pengawas */}
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
-              <h3 className="font-bold text-xl text-blue-900 mb-4 border-b pb-2">{t.orgSections.pengawas}</h3>
-              <ul className="space-y-4">
-                {orgTeam.pengawas.length === 0 && <p className="text-xs text-gray-400 italic">Belum ada data</p>}
-                {orgTeam.pengawas.map((p, i) => (
-                  <li key={i}>
-                    <p className="font-bold text-gray-800">{p.name}</p>
-                    <p className="text-sm text-slate-500">{lang === "id" ? p.role_id : p.role_en}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {/* UBAH DISINI: Ganti 'grid' menjadi 'flex justify-center' */}
+          <div className="flex flex-wrap justify-center gap-8">
+            {/* 1. Dewan Penasihat */}
+            {orgTeam.penasihat.length > 0 && (
+              <div className="w-full md:w-[45%] lg:w-[22%] bg-slate-50 p-6 rounded-xl border border-slate-100 animate-fade-in-up shadow-sm hover:shadow-md transition">
+                <h3 className="font-bold text-xl text-blue-900 mb-4 border-b pb-2">{t.orgSections.penasihat}</h3>
+                <ul className="space-y-4">
+                  {orgTeam.penasihat.map((p, i) => (
+                    <li key={i}>
+                      <p className="font-bold text-gray-800">{p.name}</p>
+                      <p className="text-xs text-slate-500 font-medium">{lang === "id" ? p.role_id : p.role_en}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-            {/* Pengurus */}
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
-              <h3 className="font-bold text-xl text-blue-900 mb-4 border-b pb-2">{t.orgSections.pengurus}</h3>
-              <ul className="space-y-4">
-                {orgTeam.pengurus.length === 0 && <p className="text-xs text-gray-400 italic">Belum ada data</p>}
-                {orgTeam.pengurus.map((p, i) => (
-                  <li key={i}>
-                    <p className="font-bold text-gray-800">{p.name}</p>
-                    <p className="text-sm text-slate-500">{lang === "id" ? p.role_id : p.role_en}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {/* 2. Dewan Pengawas */}
+            {orgTeam.pengawas.length > 0 && (
+              <div className="w-full md:w-[45%] lg:w-[22%] bg-slate-50 p-6 rounded-xl border border-slate-100 animate-fade-in-up shadow-sm hover:shadow-md transition">
+                <h3 className="font-bold text-xl text-blue-900 mb-4 border-b pb-2">{t.orgSections.pengawas}</h3>
+                <ul className="space-y-4">
+                  {orgTeam.pengawas.map((p, i) => (
+                    <li key={i}>
+                      <p className="font-bold text-gray-800">{p.name}</p>
+                      <p className="text-sm text-slate-500">{lang === "id" ? p.role_id : p.role_en}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-            {/* Pengelola */}
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
-              <h3 className="font-bold text-xl text-blue-900 mb-4 border-b pb-2">{t.orgSections.pengelola}</h3>
-              <ul className="space-y-4">
-                {orgTeam.pengelola.length === 0 && <p className="text-xs text-gray-400 italic">Belum ada data</p>}
-                {orgTeam.pengelola.map((p, i) => (
-                  <li key={i}>
-                    <p className="font-bold text-gray-800">{p.name}</p>
-                    <p className="text-sm text-slate-500">{lang === "id" ? p.role_id : p.role_en}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {/* 3. Pengurus Harian */}
+            {orgTeam.pengurus.length > 0 && (
+              <div className="w-full md:w-[45%] lg:w-[22%] bg-slate-50 p-6 rounded-xl border border-slate-100 animate-fade-in-up shadow-sm hover:shadow-md transition">
+                <h3 className="font-bold text-xl text-blue-900 mb-4 border-b pb-2">{t.orgSections.pengurus}</h3>
+                <ul className="space-y-4">
+                  {orgTeam.pengurus.map((p, i) => (
+                    <li key={i}>
+                      <p className="font-bold text-gray-800">{p.name}</p>
+                      <p className="text-sm text-slate-500">{lang === "id" ? p.role_id : p.role_en}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* 4. Pengelola */}
+            {orgTeam.pengelola.length > 0 && (
+              <div className="w-full md:w-[45%] lg:w-[22%] bg-slate-50 p-6 rounded-xl border border-slate-100 animate-fade-in-up shadow-sm hover:shadow-md transition">
+                <h3 className="font-bold text-xl text-blue-900 mb-4 border-b pb-2">{t.orgSections.pengelola}</h3>
+                <ul className="space-y-4">
+                  {orgTeam.pengelola.map((p, i) => (
+                    <li key={i}>
+                      <p className="font-bold text-gray-800">{p.name}</p>
+                      <p className="text-sm text-slate-500">{lang === "id" ? p.role_id : p.role_en}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </section>
